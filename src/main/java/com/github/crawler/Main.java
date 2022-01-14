@@ -23,6 +23,7 @@ public class Main {
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
+
                 EntityUtils.consume(entity);
             }
         }
