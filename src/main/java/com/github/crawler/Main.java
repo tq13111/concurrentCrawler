@@ -13,44 +13,90 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.*;
+import java.util.stream.Collectors;
 
 public class Main {
-    private static final String SINA_URL = "https://sina.cn/";
-    private static final List<String> siteList = new ArrayList<>();
-    private static final List<String> usedList = new ArrayList<>();
 
-    public static void main(String[] args) throws IOException, ParseException {
+    public static void main(String[] args) throws IOException, ParseException, SQLException {
+        Connection connection = DriverManager.getConnection("jdbc:h2:file:D:/Desktop/j/project/concurrentCrawler/news");
+        updateUrlFromDB(connection, "insert INTO LINK_TO_BE_PROCESSED (LINK)values (?)", "HTTPS://sina.cn");
+        String linkURL;
 
-        siteList.add(SINA_URL);
+        while ((linkURL = getUrlsFromDB(connection)) != null) {
+            System.out.println(linkURL);
+            updateUrlFromDB(connection, "DELETE FROM LINK_TO_BE_PROCESSED WHERE LINK = ?", linkURL);
 
-        while (siteList.size() > 0) {
-            String siteUrl = siteList.remove(0);
-            if (usedList.contains(siteUrl)) {
+
+            if (isLinkProcess(connection, linkURL)) {
                 continue;
             }
 
+            Document document = getAndParse(linkURL);
 
-            Document document = getAndParse(siteUrl);
-            document.select("a").forEach(Main::selectNewSiteJoinList);
+            for (Element item : document.select("a")) {
+                selectNewLinkJoinList(connection, item);
+            }
 
-            storeIntoDBIfNewsPage(document);
-            usedList.add(siteUrl);
+            storeIntoDBIfNewsPage(connection, document, linkURL);
+            updateUrlFromDB(connection, "insert INTO LINK_ALREADY_PROCESSED (LINK)values (?)", linkURL);
         }
     }
 
-    private static void selectNewSiteJoinList(Element aTag) {
+    private static String getUrlsFromDB(Connection connection) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * from LINK_TO_BE_PROCESSED");
+             ResultSet result = preparedStatement.executeQuery()) {
+            if (result.next()) {
+                return result.getString(1);
+            } else {
+                return null;
+            }
+        }
+
+    }
+
+    private static Boolean isLinkProcess(Connection connection, String siteUrl) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT LINK from LINK_ALREADY_PROCESSED where LINK = ?")) {
+            preparedStatement.setString(1, siteUrl);
+            try (ResultSet result = preparedStatement.executeQuery()) {
+                return result.next();
+            }
+        }
+    }
+
+    private static void updateUrlFromDB(Connection connection, String sql, String siteUrl) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, siteUrl);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+
+    private static void selectNewLinkJoinList(Connection connection, Element aTag) throws SQLException {
         if (aTag.attr("href").contains("news.sina")) {
-            siteList.add(aTag.attr("href"));
+            updateUrlFromDB(connection, "insert INTO LINK_TO_BE_PROCESSED (LINK)values (?)", aTag.attr("href"));
         }
     }
 
-    private static void storeIntoDBIfNewsPage(Document document) {
+
+    private static void storeIntoDBIfNewsPage(Connection connection, Document document, String link) throws SQLException {
         Elements articleTagList = document.select("article");
         if (!articleTagList.isEmpty()) {
             for (Element articleTag : articleTagList) {
-                System.out.println(articleTag.child(0).text());
+                String title = articleTag.child(0).text();
+                String content = articleTag.select("p")
+                        .stream()
+                        .map(Element::text)
+                        .collect(Collectors.joining("\n"));
+
+                try (PreparedStatement preparedStatement = connection.prepareStatement("insert INTO NEWS (url,title,content,created_at,modified_at)values(?,?,?,now(),now())")) {
+                    preparedStatement.setString(1, link);
+                    preparedStatement.setString(2, title);
+                    preparedStatement.setString(3, content);
+                    preparedStatement.executeUpdate();
+                }
+
+
             }
         }
     }
@@ -60,10 +106,12 @@ public class Main {
             HttpGet httpGet = new HttpGet(url);
 
             try (CloseableHttpResponse response = httpclient.execute(httpGet)) {
-                System.out.println(url);
                 HttpEntity entity = response.getEntity();
+                String html = EntityUtils.toString(entity);
                 EntityUtils.consume(entity);
-                return Jsoup.parse(EntityUtils.toString(entity));
+                return Jsoup.parse(html);
+
+
             }
         }
     }
