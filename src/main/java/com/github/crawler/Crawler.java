@@ -17,18 +17,19 @@ import java.sql.*;
 import java.util.stream.Collectors;
 
 public class Crawler {
-    JDBCCrawlerDao dao = new JDBCCrawlerDao();
+    //    JDBCCrawlerDao dao = new JDBCCrawlerDao();
+    MybatisCrawlerDao dao = new MybatisCrawlerDao();
 
     public static void main(String[] args) throws ParseException, SQLException, IOException {
         new Crawler().run();
     }
 
-    public void run() throws IOException, ParseException, SQLException {
+    public void run() throws IOException, ParseException {
         String linkURL;
 
-        while ((linkURL = dao.getUrlsFromDB()) != null) {
+        while ((linkURL = dao.getLinksFromDB()) != null) {
             System.out.println(linkURL);
-            dao.updateUrlFromDB("DELETE FROM LINK_TO_BE_PROCESSED WHERE LINK = ?", linkURL);
+            dao.deleteLinkFromDB(linkURL);
 
 
             if (dao.isLinkProcess(linkURL)) {
@@ -42,19 +43,17 @@ public class Crawler {
             }
 
             storeIntoDBIfNewsPage(document, linkURL);
-            dao.updateUrlFromDB("insert INTO LINK_ALREADY_PROCESSED (LINK)values (?)", linkURL);
+            dao.insertProcessedLink(linkURL);
         }
     }
 
-
-    private void selectNewLinkJoinList(Element aTag) throws SQLException {
+    private void selectNewLinkJoinList(Element aTag) {
         if (aTag.attr("href").contains("news.sina")) {
-            dao.updateUrlFromDB("insert INTO LINK_TO_BE_PROCESSED (LINK)values (?)", aTag.attr("href"));
+            dao.insert_to_be_processed(aTag.attr("href"));
         }
     }
 
-
-    private void storeIntoDBIfNewsPage(Document document, String link) throws SQLException {
+    private void storeIntoDBIfNewsPage(Document document, String link) {
         Elements articleTagList = document.select("article");
         if (!articleTagList.isEmpty()) {
             for (Element articleTag : articleTagList) {
@@ -63,9 +62,7 @@ public class Crawler {
                         .stream()
                         .map(Element::text)
                         .collect(Collectors.joining("\n"));
-                dao.insertUrlIntoDB(link, title, content);
-
-
+                dao.insertNewsIntoDB(link, title, content);
             }
         }
     }
