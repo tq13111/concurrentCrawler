@@ -3,7 +3,7 @@
 <mapper namespace="db.mybatis.MyMapper">
     <!--namespace要保证唯一，一般可以使用dao接口的路径，当然不是必须，只要保证唯一即可 -->
     <select id="selectNextLink" resultType="String">
-        select LINK
+        select link
         from LINK_TO_BE_PROCESSED
         limit 1
     </select>

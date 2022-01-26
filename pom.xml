@@ -91,6 +91,12 @@
             <artifactId>mybatis</artifactId>
             <version>3.5.2</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.27</version>
+        </dependency>
 
     </dependencies>
 
@@ -153,11 +159,18 @@
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
-                <version>8.4.2</version>
+                <version>5.2.4</version>
                 <configuration>
-                    <url>jdbc:h2:file:D:/Desktop/j/project/concurrentCrawler/news</url>
+                    <url>jdbc:mysql://localhost:3306/news</url>
+                    <user>root</user>
+                    <password>root</password>
                 </configuration>
                 <dependencies>
+                    <dependency>
+                        <groupId>mysql</groupId>
+                        <artifactId>mysql-connector-java</artifactId>
+                        <version>8.0.27</version>
+                    </dependency>
                     <dependency>
                         <groupId>com.h2database</groupId>
                         <artifactId>h2</artifactId>
