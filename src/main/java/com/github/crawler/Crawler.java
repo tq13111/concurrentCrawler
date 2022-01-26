@@ -13,36 +13,40 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.sql.*;
 import java.util.stream.Collectors;
 
-public class Crawler {
-    //    JDBCCrawlerDao dao = new JDBCCrawlerDao();
-    MybatisCrawlerDao dao = new MybatisCrawlerDao();
+public class Crawler extends Thread {
+    MybatisCrawlerDao dao;
 
-    public static void main(String[] args) throws ParseException, SQLException, IOException {
-        new Crawler().run();
+    public Crawler(MybatisCrawlerDao dao) {
+        this.dao = dao;
     }
 
-    public void run() throws IOException, ParseException {
+
+    @Override
+    public void run() {
         String linkURL;
 
-        while ((linkURL = dao.getLinksFromDB()) != null) {
+        while ((linkURL = dao.getLinkThenDelete()) != null) {
             System.out.println(linkURL);
-            dao.deleteLinkFromDB(linkURL);
 
 
             if (dao.isLinkProcess(linkURL)) {
                 continue;
             }
 
-            Document document = getAndParse(linkURL);
+            try {
+                Document document = getAndParse(linkURL);
+                for (Element item : document.select("a")) {
+                    selectNewLinkJoinList(item);
+                }
 
-            for (Element item : document.select("a")) {
-                selectNewLinkJoinList(item);
+                storeIntoDBIfNewsPage(document, linkURL);
+            } catch (IOException | ParseException e) {
+                e.printStackTrace();
             }
 
-            storeIntoDBIfNewsPage(document, linkURL);
+
             dao.insertProcessedLink(linkURL);
         }
     }

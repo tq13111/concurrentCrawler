@@ -50,17 +50,15 @@ public class MybatisCrawlerDao implements CrawlerDao {
         }
     }
 
-    @Override
-    public void deleteLinkFromDB(String link) {
-        try (SqlSession session = sqlSessionFactory.openSession(true)) {
-            session.selectOne("db.mybatis.MyMapper.deleteLink", link);
-        }
-    }
 
     @Override
-    public String getLinksFromDB() {
+    public synchronized String getLinkThenDelete() {
         try (SqlSession session = sqlSessionFactory.openSession()) {
-            return session.selectOne("db.mybatis.MyMapper.selectNextLink");
+            String link = session.selectOne("db.mybatis.MyMapper.selectNextLink");
+            if (link != null) {
+                session.selectOne("db.mybatis.MyMapper.deleteLink", link);
+            }
+            return link;
         }
     }
 
