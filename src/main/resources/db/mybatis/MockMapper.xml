@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="db.mybatis.MockMapper">
+    <!--namespace要保证唯一，一般可以使用dao接口的路径，当然不是必须，只要保证唯一即可 -->
+    <select id="selectNews" resultType="com.github.crawler.News">
+        select url, title, content, created_at, modified_at
+        from NEWS
+    </select>
+
+    <select id="insertNews" parameterType="com.github.crawler.News">
+        insert INTO NEWS (url, title, content, created_at, modified_at)
+        values (#{url}, #{title}, #{content},#{createdAt}, #{modifiedAt})
+    </select>
+</mapper>
+
